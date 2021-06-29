@@ -1,5 +1,6 @@
 package com.example.and_map;
 
+import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.PointF;
 import android.os.AsyncTask;
@@ -17,8 +18,10 @@ import android.widget.CheckBox;
 import android.widget.Spinner;
 import android.widget.Toast;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.naver.maps.geometry.LatLng;
-import com.naver.maps.geometry.LatLngBounds;
 import com.naver.maps.map.CameraUpdate;
 import com.naver.maps.map.LocationTrackingMode;
 import com.naver.maps.map.MapFragment;
@@ -41,7 +44,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,12 +58,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //test_middle
     int count = 0;
     int lCount = 0;
+    String info = "null";
     //test_end
     private Spinner maps_spinner;
     private NaverMap mNaverMap;
     private CheckBox mCheck;
     private Button iButton;
     private Button zButton;
+    private InfoWindow infoWindow = new InfoWindow();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -108,8 +112,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         ArrayList<Marker> arrayListLongMarker = new ArrayList<>();
 
-        // 정보 창 test
-        InfoWindow infoWindow = new InfoWindow();
+
 
         // 마커 및 선 연결, 폴리곤 만들기
         Marker marker1 = new Marker();
@@ -191,23 +194,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
         });
+
+
+
+
         // 롱 클릭 시 test
         mNaverMap.setOnMapLongClickListener(new NaverMap.OnMapLongClickListener() {
             @Override
             public void onMapLongClick(@NonNull @NotNull PointF pointF, @NonNull @NotNull LatLng latLng) {
+
+
+
                 arrayListLongMarker.add(lCount, new Marker());
 
                 arrayListLongMarker.get(lCount).setPosition(latLng);
                 arrayListLongMarker.get(lCount).setMap(naverMap);
+
+
+                // async로 처리 후, async에서 정보 텍스트를 수정함
+                downloadAxis da = new downloadAxis();
+                da.execute(latLng);
+
                 infoWindow.open(arrayListLongMarker.get(lCount));
                 lCount++;
 
-                String[] url = getUrl(latLng);
-                downloadAxis da = new downloadAxis();
-                da.execute(url[0], Double.toString(latLng.latitude), Double.toString(latLng.longitude));
-
-                // String url = getUrl(latLng);
-               // Log.d("tag33", "메세지" + url);
 
             }
         });
@@ -303,155 +313,111 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
     // url 만들기 test openconnection 필요
-    /*
-    private String getUrl(LatLng latLng)
-    {
-
-        String[] url = {"", ""};
-        InputStream iStream = null;
-        String data;
-        String latlng_place = latLng.latitude + "," + latLng.longitude;
-        url[0] = "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?request=coordsToaddr&coords=" + latlng_place + "&sourcecrs=epsg:4326&output=json&orders=addr"; // 수정 필요
-
-        HttpURLConnection conn = null;
-
-        try {
-            URL mUrl = new URL(url[0]);
-            conn = (HttpURLConnection)mUrl.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Content-type", "application/json");
-            conn.setRequestProperty("X-NCP-APIGW-API-KEY-ID", "jp5obaai53");
-            conn.setRequestProperty("X-NCP-APIGW-API-KEY", "iPiOYsYw0QCqzBMy0rSu6YgF9gdDjjYwBOxsoBZp");
-            conn.connect();
-
-            iStream = conn.getInputStream();
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
-            StringBuffer sb = new StringBuffer();
-
-            String line = "";
-            while((line = br.readLine()) != null)
-            {
-                sb.append(line);
-            }
-
-            data = sb.toString();
-            br.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            data = "Null";
-        }
-
-
-        return data;
-    }
-    */
-    private String[] getUrl(LatLng latLng)
-    {
-        String[] url = {"",""};
-        String addressAxis = latLng.latitude  + ","  + latLng.longitude;
-        url[0] = "https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?request=coordsToaddr&coords=" + addressAxis + "&sourcecrs=epsg:4326&output=json&orders=addr";
-
-        return url;
-    }
-
-
-    private String downloadUrl(String strUrl) throws IOException
-    {
-        String data = "";
-        InputStream iStream = null;
-        HttpURLConnection conn = null;
-
-        try{
-            URL mUrl = new URL(strUrl);
-
-            conn =  (HttpURLConnection)mUrl.openConnection();
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("Content-type", "application/json");
-            conn.setRequestProperty("X-NCP-APIGW-API-KEY-ID", "jp5obaai53");
-            conn.setRequestProperty("X-NCP-APIGW-API-KEY", "iPiOYsYw0QCqzBMy0rSu6YgF9gdDjjYwBOxsoBZp");
-
-
-            conn.connect();
-
-            iStream = conn.getInputStream();
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(iStream));
-            Log.d("testU", br.toString());
-            StringBuffer sb = new StringBuffer();
-
-            String line = "";
-            while((line = br.readLine()) != null)
-            {
-                sb.append(line);
-            }
-
-            data = sb.toString();
-
-            br.close();
-        }
-        catch (Exception e)
-        {
-            Log.d("Urlfail", "url download fail");
-        }
-        finally {
-            Log.d("urlend", "end");
-            iStream.close();
-            conn.disconnect();
-        }
-
-        return data;
-    }
-
-    public List<String> R_geocoding(JSONObject jObject)
-    {
-        List<String> f_a = new ArrayList<>();
-        JSONArray jResults;
-        JSONArray jAddress;
-        try{
-            jResults = jObject.getJSONArray("results");
-            jAddress = ((JSONObject)jResults.get(0)).getJSONArray("address_components");
-            f_a.add(((JSONObject)(jAddress.get(0))).get("long_name").toString()+" " +((JSONObject)(jAddress.get(1))).get("long_name").toString());
-            f_a.add(((JSONObject)jResults.get(0)).get("formatted_address").toString());
-            Log.d("R_g", f_a.get(0) );
-        } catch(JSONException e)
-        {
-            e.printStackTrace();
-            Log.d("R_g","R_g error");
-
-        }
-        return f_a;
-    }
 
     // async test
 
-    private class downloadAxis extends AsyncTask<String, String, String[]>
+    private class downloadAxis extends AsyncTask<LatLng , String, String>
     {
-        protected String[] doInBackground(String... URLnLL)
-        {
-            String[] data = {"", "", ""};
-            try{
-                data[0] = downloadUrl(URLnLL[0]);
-                data[1] = URLnLL[1];
-                data[2] = URLnLL[2];
-            } catch (Exception e){
-                Log.d("Background task", e.toString());
-            }
 
-            return data;
+        private StringBuilder urlBuilder;
+        private URL url;
+        private HttpURLConnection conn;
+        @Override
+        protected String doInBackground(LatLng... latLngs)
+        {
+
+            String strCoord = String.valueOf(latLngs[0].longitude)+","+String.valueOf(latLngs[0].latitude);
+            StringBuilder sb = new StringBuilder();
+
+            urlBuilder = new StringBuilder("https://naveropenapi.apigw.ntruss.com/map-reversegeocode/v2/gc?request=coordsToaddr&coords=" + strCoord + "&sourcecrs=epsg:4326&output=json&orders=addr");
+
+            try{
+                url = new URL(urlBuilder.toString());
+
+                conn =  (HttpURLConnection)url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Content-type", "application/json");
+                conn.setRequestProperty("X-NCP-APIGW-API-KEY-ID", "jp5obaai53");
+                conn.setRequestProperty("X-NCP-APIGW-API-KEY", "iPiOYsYw0QCqzBMy0rSu6YgF9gdDjjYwBOxsoBZp");
+
+
+
+                BufferedReader br;
+                if(conn.getResponseCode() >= 200 && conn.getResponseCode() <= 300) {
+                    br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                } else {
+                    br = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+                }
+                String line;
+                while ((line = br.readLine()) != null) {
+                    sb.append(line);
+                }
+                br.close();
+                conn.disconnect();
+
+              } catch (Exception e) {
+                 return null;
+              }
+                Log.d("test", sb.toString());
+
+
+                return sb.toString();
+
         }
 
-        protected void onPostExecute(String[] result)
+        protected void onPostExecute(String result)
         {
             super.onPostExecute(result);
-            JSONObject jObject;
-            List<String> Rgeo;
-            try{
-                jObject = new JSONObject(result[0]);
 
-            } catch(JSONException e) {
-                e.printStackTrace();
+
+            JsonParser jsonParser = new JsonParser();
+
+
+            JsonObject jObject = (JsonObject) jsonParser.parse(result);
+            JsonArray jsonArray = (JsonArray) jObject.get("results");
+            jObject = (JsonObject) jsonArray.get(0);
+            jObject = (JsonObject) jObject.get("region");
+            jObject = (JsonObject) jObject.get("area1");
+            String data = jObject.get("name").getAsString();
+
+            jObject = (JsonObject) jsonParser.parse(result);
+            jsonArray = (JsonArray) jObject.get("results");
+            jObject = (JsonObject) jsonArray.get(0);
+            jObject = (JsonObject) jObject.get("region");
+            jObject = (JsonObject) jObject.get("area2");
+            data = data +" " +jObject.get("name").getAsString();
+
+            jObject = (JsonObject) jsonParser.parse(result);
+            jsonArray = (JsonArray) jObject.get("results");
+            jObject = (JsonObject) jsonArray.get(0);
+            jObject = (JsonObject) jObject.get("region");
+            jObject = (JsonObject) jObject.get("area3");
+            data = data +" " +jObject.get("name").getAsString();
+
+
+            jObject = (JsonObject) jsonParser.parse(result);
+            jsonArray = (JsonArray) jObject.get("results");
+            jObject = (JsonObject) jsonArray.get(0);
+            jObject = (JsonObject) jObject.get("land");
+            data = data +" " +jObject.get("number1").getAsString();
+            if(jObject.get("number2").getAsString().equals("") == true);
+            else {
+                data = data + "-" + jObject.get("number2").getAsString();
             }
+             Log.d("test_d", data);
+             info = data;
+
+            infoWindow.setAdapter(new InfoWindow.DefaultTextAdapter(getApplicationContext()) {
+                @NonNull
+                @NotNull
+                @Override
+                public CharSequence getText(@NonNull @NotNull InfoWindow infoWindow) {
+                    return info;
+                }
+            });
+
+
+
         }
     }
 
