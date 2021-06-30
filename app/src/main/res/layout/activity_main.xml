@@ -48,4 +48,22 @@
         app:layout_constraintTop_toTopOf="@id/initButton" />
 
 
+    <EditText
+        android:id="@+id/eText"
+        android:layout_width="200dp"
+        android:layout_height="35dp"
+        android:text="input address"
+        android:autoSizeTextType="uniform"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/eText" />
+
+    <Button
+        android:id="@+id/eButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ENTER"
+        app:layout_constraintStart_toEndOf="@id/eText"
+        app:layout_constraintBottom_toBottomOf="@id/eText"/>
+
+
 </android.support.constraint.ConstraintLayout>

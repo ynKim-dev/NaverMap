@@ -15,6 +15,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 
@@ -58,7 +59,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //test_middle
     int count = 0;
     int lCount = 0;
+    int geoCount = 0;
+    Double geoLat = 0.0;
+    Double geoLng = 0.0;
     String info = "null";
+    String text = "";
     //test_end
     private Spinner maps_spinner;
     private NaverMap mNaverMap;
@@ -66,6 +71,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Button iButton;
     private Button zButton;
     private InfoWindow infoWindow = new InfoWindow();
+    private EditText eText;
+    private Button eButton;
+    private ArrayList<Marker> arrayListGeoMarker = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,8 +107,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         iButton = (Button) findViewById(R.id.initButton);
         zButton = (Button)findViewById(R.id.zButton);
 
-        //test
+
         locationSource = new FusedLocationSource(this, LOCATION_PERMISSION_REQUEST_CODE);
+
+        //test
+        eText = (EditText) findViewById(R.id.eText);
+        eButton = (Button) findViewById(R.id.eButton);
+
     }
 
     @Override
@@ -267,6 +280,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     arrayListLongMarker.get(i).setMap(null);
                 }
 
+                //test start
+                for(int i = 0; i < geoCount; i++)
+                {
+                    arrayListGeoMarker.get(i).setMap(null);
+                }
+
+                arrayListGeoMarker.clear();
+                // test end
                 arrayListLatLng.clear();
                 arrayListMarker.clear();
                 arrayListLongMarker.clear();
@@ -274,6 +295,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 count = 0;
                 lCount = 0;
+                geoCount = 0;
                // Log.d("mytag", "난 여기가 궁금해");
             }
         });
@@ -294,6 +316,75 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         locationOverlay.setVisible(true);
         naverMap.setLocationTrackingMode(LocationTrackingMode.NoFollow);
 
+        // 엔터 버튼 테스트
+        eButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        String test = "전라북도 군산시 신관동 290";
+                        StringBuilder urlGeoBuilder = new StringBuilder("https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=" +  test);
+                        StringBuilder output = new StringBuilder();
+                        URL gURL;
+                        HttpURLConnection connection;
+
+
+                        try{
+                            gURL = new URL(urlGeoBuilder.toString());
+
+                            connection =  (HttpURLConnection)gURL.openConnection();
+                            connection.setRequestMethod("GET");
+                            connection.setRequestProperty("Content-type", "application/json");
+                            connection.setRequestProperty("X-NCP-APIGW-API-KEY-ID", "jp5obaai53");
+                            connection.setRequestProperty("X-NCP-APIGW-API-KEY", "iPiOYsYw0QCqzBMy0rSu6YgF9gdDjjYwBOxsoBZp");
+
+
+                            BufferedReader geoBuffer;
+                            if(connection.getResponseCode() >= 200 && connection.getResponseCode() <= 300) {
+                                geoBuffer = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                            } else {
+                                geoBuffer = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
+                            }
+                            String line;
+                            while ((line = geoBuffer.readLine()) != null) {
+                                output.append(line);
+                            }
+                           // Log.d("test_call","");
+                            geoBuffer.close();
+                            connection.disconnect();
+
+                        } catch (Exception e) {
+                            Log.d("test_d", "connection failed");
+                        }
+                        Log.d("test", output.toString());
+
+                        JsonParser jsonGeoParser = new JsonParser();
+
+
+                        JsonObject jObject = (JsonObject) jsonGeoParser.parse(output.toString());
+                        JsonArray jsonArray = (JsonArray) jObject.get("addresses");
+                        jObject = (JsonObject) jsonArray.get(0);
+                        String result = "경도" + jObject.get("x").getAsString() + jObject.get("y").getAsString();
+                        Log.d("test_parse", result);
+                        geoLat = jObject.get("y").getAsDouble();
+                        geoLng = jObject.get("x").getAsDouble();
+
+
+                    }
+                }).start();
+                arrayListGeoMarker.add(new Marker());
+                arrayListGeoMarker.get(geoCount).setPosition(new LatLng(geoLat, geoLng));
+                arrayListGeoMarker.get(geoCount).setMap(naverMap);
+                geoCount++;
+            }
+        });
+
+
+        // test 에디트 텍스트 입력 받은 값 가져오기
+        text = eText.getText().toString();
+        Log.d("test_Text", text);
     }
 
     //권한 받아오기
@@ -312,9 +403,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     }
-    // url 만들기 test openconnection 필요
 
-    // async test
+    // 비동기로 리버스 지오코딩해서 정보창 처리하기
 
     private class downloadAxis extends AsyncTask<LatLng , String, String>
     {
