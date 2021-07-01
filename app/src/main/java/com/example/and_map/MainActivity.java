@@ -324,8 +324,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        String test = "전라북도 군산시 신관동 290";
-                        StringBuilder urlGeoBuilder = new StringBuilder("https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=" +  test);
+                        // 에디트 텍스트 입력 받은 값 가져오기
+                        text = eText.getText().toString(); // test 값 : 전라북도 군산시 신관동 290
+                        Log.d("test_Text", text);
+
+
+                        StringBuilder urlGeoBuilder = new StringBuilder("https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode?query=" +  text);
                         StringBuilder output = new StringBuilder();
                         URL gURL;
                         HttpURLConnection connection;
@@ -371,20 +375,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         geoLat = jObject.get("y").getAsDouble();
                         geoLng = jObject.get("x").getAsDouble();
 
+                        // 스레드에서 UI 스레드가 할 일은 처리할 수 없음. 그래서 UI 스레드에서 하는 일을 처리할 수 있도록 아래와 같이 코딩
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                arrayListGeoMarker.add(new Marker());
+                                arrayListGeoMarker.get(geoCount).setPosition(new LatLng(geoLat, geoLng));
+                                arrayListGeoMarker.get(geoCount).setMap(naverMap);
+                                geoCount++;
+                            }
+                        });
 
                     }
                 }).start();
-                arrayListGeoMarker.add(new Marker());
-                arrayListGeoMarker.get(geoCount).setPosition(new LatLng(geoLat, geoLng));
-                arrayListGeoMarker.get(geoCount).setMap(naverMap);
-                geoCount++;
+
             }
         });
 
 
-        // test 에디트 텍스트 입력 받은 값 가져오기
-        text = eText.getText().toString();
-        Log.d("test_Text", text);
+
+
     }
 
     //권한 받아오기
